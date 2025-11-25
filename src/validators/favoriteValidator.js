@@ -1,15 +1,5 @@
-/**
- * Validadores de Favoritos
- * 
- * Esquemas de validación Joi para todas las operaciones
- * relacionadas con productos favoritos y markup
- */
-
 const Joi = require('joi');
 
-/**
- * Schema para agregar un producto a favoritos
- */
 const addFavoriteSchema = Joi.object({
   productId: Joi.string()
     .required()
@@ -19,14 +9,6 @@ const addFavoriteSchema = Joi.object({
     })
 });
 
-/**
- * Schema para configurar markup de un producto favorito
- * 
- * Tipos de markup:
- * - 'default': Usa el markup configurado por defecto del revendedor
- * - 'fixed': Valor fijo a agregar al precio base
- * - 'percentage': Porcentaje a agregar al precio base
- */
 const markupSchema = Joi.object({
   markupType: Joi.string()
     .valid('fixed', 'percentage', 'default')
@@ -51,9 +33,6 @@ const markupSchema = Joi.object({
     })
 });
 
-/**
- * Schema para validación de parámetros de productId en URL
- */
 const favoriteProductIdSchema = Joi.object({
   productId: Joi.string()
     .required()
@@ -63,19 +42,13 @@ const favoriteProductIdSchema = Joi.object({
     })
 });
 
-/**
- * Schema para filtros de favoritos
- * Validación de query parameters para listados
- */
 const favoritesFilterSchema = Joi.object({
-  // Filtro por categoría
   categoryId: Joi.string()
     .optional()
     .messages({
       'string.base': 'El ID de categoría debe ser válido'
     }),
   
-  // Paginación
   page: Joi.number()
     .integer()
     .min(1)

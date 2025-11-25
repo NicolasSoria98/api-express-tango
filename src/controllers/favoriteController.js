@@ -1,18 +1,6 @@
-/**
- * Controlador de Favoritos
- * 
- * Maneja las peticiones HTTP relacionadas con favoritos
- * y delega la lógica de negocio al servicio correspondiente
- */
-
 const favoriteService = require('../services/favoriteService');
 
 class FavoriteController {
-  /**
-   * POST /favorites
-   * Agregar un producto a favoritos
-   * Solo revendedores autenticados
-   */
   async addFavorite(req, res) {
     try {
       const resellerId = req.user.userId;
@@ -47,12 +35,6 @@ class FavoriteController {
       });
     }
   }
-
-  /**
-   * DELETE /favorites/:productId
-   * Quitar un producto de favoritos
-   * Solo revendedores autenticados
-   */
   async removeFavorite(req, res) {
     try {
       const resellerId = req.user.userId;
@@ -80,12 +62,6 @@ class FavoriteController {
       });
     }
   }
-
-  /**
-   * GET /favorites
-   * Obtener mis productos favoritos
-   * Solo revendedores autenticados
-   */
   async getFavorites(req, res) {
     try {
       const resellerId = req.user.userId;
@@ -109,12 +85,6 @@ class FavoriteController {
       });
     }
   }
-
-  /**
-   * GET /favorites/by-category
-   * Obtener favoritos agrupados por categoría
-   * Solo revendedores autenticados
-   */
   async getFavoritesByCategory(req, res) {
     try {
       const resellerId = req.user.userId;
@@ -133,12 +103,6 @@ class FavoriteController {
       });
     }
   }
-
-  /**
-   * PUT /favorites/:productId/markup
-   * Configurar markup específico para un producto favorito
-   * Solo revendedores autenticados
-   */
   async setProductMarkup(req, res) {
     try {
       const resellerId = req.user.userId;
@@ -175,12 +139,6 @@ class FavoriteController {
       });
     }
   }
-
-  /**
-   * GET /favorites/:productId/markup
-   * Ver configuración de markup de un producto favorito
-   * Solo revendedores autenticados
-   */
   async getProductMarkup(req, res) {
     try {
       const resellerId = req.user.userId;

@@ -1,10 +1,3 @@
-/**
- * Servicio de Favoritos
- * 
- * Lógica de negocio para gestión de productos favoritos
- * y configuración de markup personalizado
- */
-
 const { db, admin } = require('../../config/firebase');
 
 class FavoriteService {
@@ -17,7 +10,6 @@ class FavoriteService {
    * @returns {Promise<Object>} Favorito creado
    */
   async addFavorite(resellerId, productId) {
-    // Verificar que el producto exista y esté activo
     const productDoc = await db.collection('products').doc(productId).get();
     
     if (!productDoc.exists) {
@@ -28,7 +20,7 @@ class FavoriteService {
       throw new Error('El producto no está disponible');
     }
 
-    // Verificar que no esté ya en favoritos
+
     const existingFavorite = await db.collection('favorites')
       .where('resellerId', '==', resellerId)
       .where('productId', '==', productId)
@@ -38,32 +30,27 @@ class FavoriteService {
       throw new Error('El producto ya está en tus favoritos');
     }
 
-    // Obtener configuración de markup por defecto del revendedor
     const resellerDoc = await db.collection('resellers').doc(resellerId).get();
     const resellerData = resellerDoc.data();
 
-    // Crear favorito con configuración por defecto
     const favoriteData = {
       resellerId,
       productId,
-      markupType: 'default', // Usar markup por defecto inicialmente
-      markupValue: 0, // Se calculará en base a la configuración del revendedor
+      markupType: 'default', 
+      markupValue: 0, 
       addedAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
     const favoriteRef = await db.collection('favorites').add(favoriteData);
 
-    // Incrementar contador de favoritos en el producto
     await db.collection('products').doc(productId).update({
       favoritesCount: admin.firestore.FieldValue.increment(1)
     });
 
-    // Incrementar contador de favoritos en stats del revendedor
     await db.collection('resellers').doc(resellerId).update({
       'stats.totalFavorites': admin.firestore.FieldValue.increment(1)
     });
 
-    // Incrementar contador de favoritos en stats del proveedor
     const productData = productDoc.data();
     await db.collection('suppliers').doc(productData.supplierId).update({
       'stats.totalFavorites': admin.firestore.FieldValue.increment(1)
@@ -86,7 +73,6 @@ class FavoriteService {
    * @returns {Promise<Object>} Confirmación de eliminación
    */
   async removeFavorite(resellerId, productId) {
-    // Buscar el favorito
     const favoriteSnapshot = await db.collection('favorites')
       .where('resellerId', '==', resellerId)
       .where('productId', '==', productId)
@@ -98,26 +84,22 @@ class FavoriteService {
 
     const favoriteDoc = favoriteSnapshot.docs[0];
 
-    // Obtener datos del producto antes de eliminar
     const productDoc = await db.collection('products').doc(productId).get();
     
-    // Eliminar favorito
+
     await favoriteDoc.ref.delete();
 
-    // Decrementar contador de favoritos en el producto
     if (productDoc.exists) {
       await db.collection('products').doc(productId).update({
         favoritesCount: admin.firestore.FieldValue.increment(-1)
       });
 
-      // Decrementar contador de favoritos en stats del proveedor
       const productData = productDoc.data();
       await db.collection('suppliers').doc(productData.supplierId).update({
         'stats.totalFavorites': admin.firestore.FieldValue.increment(-1)
       });
     }
 
-    // Decrementar contador de favoritos en stats del revendedor
     await db.collection('resellers').doc(resellerId).update({
       'stats.totalFavorites': admin.firestore.FieldValue.increment(-1)
     });
@@ -142,17 +124,15 @@ class FavoriteService {
       .where('resellerId', '==', resellerId)
       .orderBy('addedAt', 'desc');
 
-    // Obtener total
     const countSnapshot = await query.count().get();
     const totalFavorites = countSnapshot.data().count;
 
-    // Aplicar paginación
+
     const offset = (page - 1) * limit;
     query = query.limit(limit).offset(offset);
 
     const snapshot = await query.get();
 
-    // Obtener favoritos con datos de productos
     const favorites = await Promise.all(
       snapshot.docs.map(async (doc) => {
         const favoriteData = {
@@ -161,7 +141,6 @@ class FavoriteService {
           addedAt: doc.data().addedAt?.toDate()
         };
 
-        // Obtener datos del producto
         const productDoc = await db.collection('products').doc(favoriteData.productId).get();
         
         if (!productDoc.exists) {
@@ -173,20 +152,17 @@ class FavoriteService {
           ...productDoc.data()
         };
 
-        // Obtener datos del proveedor
         const supplierDoc = await db.collection('suppliers').doc(productData.supplierId).get();
         const supplierData = supplierDoc.exists ? {
           companyName: supplierDoc.data().companyName,
           address: supplierDoc.data().address
         } : null;
 
-        // Obtener datos de la categoría
         const categoryDoc = await db.collection('categories').doc(productData.categoryId).get();
         const categoryData = categoryDoc.exists ? {
           name: categoryDoc.data().name
         } : null;
 
-        // Calcular precio final con markup
         const finalPrice = this._calculateFinalPrice(
           productData.price,
           favoriteData,
@@ -206,7 +182,7 @@ class FavoriteService {
     );
 
     return {
-      favorites: favorites.filter(f => f.product !== null), // Filtrar productos eliminados
+      favorites: favorites.filter(f => f.product !== null), 
       pagination: {
         currentPage: page,
         totalPages: Math.ceil(totalFavorites / limit),
@@ -225,7 +201,6 @@ class FavoriteService {
    * @returns {Promise<Object>} Favoritos agrupados
    */
   async getFavoritesByCategory(resellerId) {
-    // Obtener todos los favoritos del revendedor
     const favoritesSnapshot = await db.collection('favorites')
       .where('resellerId', '==', resellerId)
       .orderBy('addedAt', 'desc')
@@ -235,10 +210,9 @@ class FavoriteService {
       return { categories: [] };
     }
 
-    // Obtener IDs de productos
+
     const productIds = favoritesSnapshot.docs.map(doc => doc.data().productId);
 
-    // Obtener datos de productos
     const productsData = {};
     for (const productId of productIds) {
       const productDoc = await db.collection('products').doc(productId).get();
@@ -250,7 +224,7 @@ class FavoriteService {
       }
     }
 
-    // Agrupar por categoría
+
     const categoriesMap = {};
     
     for (const favoriteDoc of favoritesSnapshot.docs) {
@@ -267,7 +241,7 @@ class FavoriteService {
       const categoryId = product.categoryId;
 
       if (!categoriesMap[categoryId]) {
-        // Obtener datos de la categoría
+
         const categoryDoc = await db.collection('categories').doc(categoryId).get();
         categoriesMap[categoryId] = {
           categoryId,
@@ -276,7 +250,6 @@ class FavoriteService {
         };
       }
 
-      // Calcular precio final
       const finalPrice = await this._calculateFinalPrice(
         product.price,
         favoriteData,
@@ -291,8 +264,6 @@ class FavoriteService {
         }
       });
     }
-
-    // Convertir a array y ordenar por cantidad de productos
     const categories = Object.values(categoriesMap)
       .sort((a, b) => b.products.length - a.products.length);
 
@@ -310,7 +281,6 @@ class FavoriteService {
   async setProductMarkup(resellerId, productId, markupConfig) {
     const { markupType, markupValue } = markupConfig;
 
-    // Buscar el favorito
     const favoriteSnapshot = await db.collection('favorites')
       .where('resellerId', '==', resellerId)
       .where('productId', '==', productId)
@@ -322,15 +292,12 @@ class FavoriteService {
 
     const favoriteDoc = favoriteSnapshot.docs[0];
 
-    // Preparar actualización
     const updateData = {
       markupType,
       markupValue: markupType === 'default' ? 0 : parseFloat(markupValue)
     };
 
     await favoriteDoc.ref.update(updateData);
-
-    // Obtener datos actualizados
     const updatedDoc = await favoriteDoc.ref.get();
     
     return {
@@ -348,7 +315,6 @@ class FavoriteService {
    * @returns {Promise<Object>} Configuración de markup
    */
   async getProductMarkup(resellerId, productId) {
-    // Buscar el favorito
     const favoriteSnapshot = await db.collection('favorites')
       .where('resellerId', '==', resellerId)
       .where('productId', '==', productId)
@@ -360,8 +326,6 @@ class FavoriteService {
 
     const favoriteDoc = favoriteSnapshot.docs[0];
     const favoriteData = favoriteDoc.data();
-
-    // Obtener datos del producto
     const productDoc = await db.collection('products').doc(productId).get();
     
     if (!productDoc.exists) {
@@ -370,11 +334,9 @@ class FavoriteService {
 
     const productData = productDoc.data();
 
-    // Obtener configuración por defecto del revendedor
     const resellerDoc = await db.collection('resellers').doc(resellerId).get();
     const resellerData = resellerDoc.data();
 
-    // Calcular precio final
     const finalPrice = await this._calculateFinalPrice(
       productData.price,
       favoriteData,
@@ -411,7 +373,6 @@ class FavoriteService {
     let markupType = favoriteData.markupType;
     let markupValue = favoriteData.markupValue;
 
-    // Si usa markup por defecto, obtener la configuración del revendedor
     if (markupType === 'default') {
       const resellerDoc = await db.collection('resellers').doc(resellerId).get();
       if (resellerDoc.exists) {
@@ -420,8 +381,6 @@ class FavoriteService {
         markupValue = resellerData.defaultMarkupValue;
       }
     }
-
-    // Calcular precio final según tipo de markup
     let finalPrice = basePrice;
 
     if (markupType === 'fixed') {
@@ -430,7 +389,7 @@ class FavoriteService {
       finalPrice = basePrice * (1 + markupValue / 100);
     }
 
-    return Math.round(finalPrice * 100) / 100; // Redondear a 2 decimales
+    return Math.round(finalPrice * 100) / 100; 
   }
 }
 
