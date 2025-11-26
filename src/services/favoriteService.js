@@ -1,3 +1,4 @@
+//sebastian panozzo
 const { db, admin } = require('../../config/firebase');
 
 class FavoriteService {
@@ -15,8 +16,9 @@ class FavoriteService {
     if (!productDoc.exists) {
       throw new Error('Producto no encontrado');
     }
+    const productData = productDoc.data();
 
-    if (!productDoc.data().isActive) {
+    if (!productData.isActive) {
       throw new Error('El producto no está disponible');
     }
 
@@ -36,8 +38,10 @@ class FavoriteService {
     const favoriteData = {
       resellerId,
       productId,
+      supplierId: productData.supplierId,
       markupType: 'default', 
-      markupValue: 0, 
+      isActive: true,
+      markupValue: resellerData.defaultMarkupValue,
       addedAt: admin.firestore.FieldValue.serverTimestamp()
     };
 
@@ -51,7 +55,6 @@ class FavoriteService {
       'stats.totalFavorites': admin.firestore.FieldValue.increment(1)
     });
 
-    const productData = productDoc.data();
     await db.collection('suppliers').doc(productData.supplierId).update({
       'stats.totalFavorites': admin.firestore.FieldValue.increment(1)
     });
@@ -120,18 +123,10 @@ class FavoriteService {
   async getFavorites(resellerId, filters = {}) {
     const { page = 1, limit = 10 } = filters;
 
-    let query = db.collection('favorites')
+    const snapshot = await db.collection('favorites')
       .where('resellerId', '==', resellerId)
-      .orderBy('addedAt', 'desc');
-
-    const countSnapshot = await query.count().get();
-    const totalFavorites = countSnapshot.data().count;
-
-
-    const offset = (page - 1) * limit;
-    query = query.limit(limit).offset(offset);
-
-    const snapshot = await query.get();
+      .where('isActive', '==', true)
+      .get();
 
     const favorites = await Promise.all(
       snapshot.docs.map(async (doc) => {
@@ -181,14 +176,29 @@ class FavoriteService {
       })
     );
 
+    let validFavorites = favorites.filter(f => f.product !== null);
+
+    validFavorites.sort((a, b) => {
+      const dateA = a.addedAt || new Date(0);
+      const dateB = b.addedAt || new Date(0);
+      return dateB - dateA;
+    });
+
+    const totalFavorites = validFavorites.length;
+    const totalPages = Math.ceil(totalFavorites / limit);
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+
+    const paginatedFavorites = validFavorites.slice(startIndex, endIndex);
+
     return {
-      favorites: favorites.filter(f => f.product !== null), 
+      favorites: paginatedFavorites,
       pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(totalFavorites / limit),
+        currentPage: parseInt(page),
+        totalPages,
         totalFavorites,
-        favoritesPerPage: limit,
-        hasNextPage: page < Math.ceil(totalFavorites / limit),
+        favoritesPerPage: parseInt(limit),
+        hasNextPage: page < totalPages,
         hasPreviousPage: page > 1
       }
     };
@@ -203,7 +213,7 @@ class FavoriteService {
   async getFavoritesByCategory(resellerId) {
     const favoritesSnapshot = await db.collection('favorites')
       .where('resellerId', '==', resellerId)
-      .orderBy('addedAt', 'desc')
+      .where('isActive', '==', true)
       .get();
 
     if (favoritesSnapshot.empty) {
@@ -267,6 +277,13 @@ class FavoriteService {
     const categories = Object.values(categoriesMap)
       .sort((a, b) => b.products.length - a.products.length);
 
+      categories.forEach(category => {
+      category.products.sort((a, b) => {
+        const dateA = a.addedAt || new Date(0);
+        const dateB = b.addedAt || new Date(0);
+        return dateB - dateA;
+      });
+    });
     return { categories };
   }
 

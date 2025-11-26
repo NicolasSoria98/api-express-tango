@@ -1,3 +1,4 @@
+//sebastian panozzo
 const Joi = require('joi');
 
 const addFavoriteSchema = Joi.object({
@@ -29,7 +30,8 @@ const markupSchema = Joi.object({
       'any.required': 'El valor de markup es obligatorio cuando el tipo no es "default"',
       'number.min': 'El valor de markup no puede ser negativo',
       'number.base': 'El valor de markup debe ser un número válido',
-      'any.unknown': 'No se debe especificar markupValue cuando el tipo es "default"'
+      'any.unknown': 'No se debe especificar markupValue cuando el tipo es "default"',
+      'any.forbidden': 'No se debe especificar markupValue cuando el tipo es "default"'
     })
 });
 
