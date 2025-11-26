@@ -16,15 +16,21 @@
       ]
     }
   ],
+    "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "emulators": {
     "functions": {
       "port": 5001
     },
     "firestore": {
-      "port": 4000
+      "port": 4001
     },
     "storage": {
-      "port": 4400
+      "port": 9199
     },
     "ui": {
       "enabled": true,

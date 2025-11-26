@@ -1,13 +1,10 @@
+require('dotenv').config();
+
 const functions = require('firebase-functions');
-const admin = require('firebase-admin');
+const { admin, db, storage } = require('./utils/firebase');
 const emailService = require('./utils/emailService');
 const notificationService = require('./utils/notificationService');
 const catalogGenerator = require('./utils/catalogGenerator');
-
-admin.initializeApp();
-
-const db = admin.firestore();
-const storage = admin.storage();
 
 //onusercreated
 exports.onUserCreated = functions.firestore
